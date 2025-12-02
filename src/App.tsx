@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Splash from "./pages/Splash";
 import Onboarding from "./pages/Onboarding";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Tontines from "./pages/Tontines";
 import TontineDetail from "./pages/TontineDetail";
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/" element={<Splash />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/tontines" element={<Tontines />} />
           <Route path="/tontines/:id" element={<TontineDetail />} />
