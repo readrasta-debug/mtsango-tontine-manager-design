@@ -14,7 +14,174 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      contributions: {
+        Row: {
+          amount: number
+          created_at: string
+          from_member_id: string
+          id: string
+          paid_at: string | null
+          status: string
+          to_member_id: string
+          tontine_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          from_member_id: string
+          id?: string
+          paid_at?: string | null
+          status?: string
+          to_member_id: string
+          tontine_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          from_member_id?: string
+          id?: string
+          paid_at?: string | null
+          status?: string
+          to_member_id?: string
+          tontine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contributions_from_member_id_fkey"
+            columns: ["from_member_id"]
+            isOneToOne: false
+            referencedRelation: "tontine_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contributions_to_member_id_fkey"
+            columns: ["to_member_id"]
+            isOneToOne: false
+            referencedRelation: "tontine_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contributions_tontine_id_fkey"
+            columns: ["tontine_id"]
+            isOneToOne: false
+            referencedRelation: "tontines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          pin_code: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          phone?: string | null
+          pin_code?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          pin_code?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tontine_members: {
+        Row: {
+          created_at: string
+          id: string
+          is_current_user: boolean | null
+          name: string
+          phone: string | null
+          position: number
+          tontine_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_current_user?: boolean | null
+          name: string
+          phone?: string | null
+          position?: number
+          tontine_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_current_user?: boolean | null
+          name?: string
+          phone?: string | null
+          position?: number
+          tontine_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tontine_members_tontine_id_fkey"
+            columns: ["tontine_id"]
+            isOneToOne: false
+            referencedRelation: "tontines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tontines: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          frequency: string
+          id: string
+          name: string
+          start_date: string | null
+          total_members: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          frequency: string
+          id?: string
+          name: string
+          start_date?: string | null
+          total_members?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          frequency?: string
+          id?: string
+          name?: string
+          start_date?: string | null
+          total_members?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
