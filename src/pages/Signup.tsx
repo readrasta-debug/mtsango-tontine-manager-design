@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { User, Phone, Mail, Lock, ArrowLeft, Loader2 } from "lucide-react";
+import { User, Phone, Lock, ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/mtsango-logo.png";
@@ -17,9 +17,8 @@ const Signup = () => {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    pin: "",
+    confirmPin: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -28,22 +27,28 @@ const Signup = () => {
 
     if (!formData.name.trim()) {
       newErrors.name = "Le nom est requis";
+    } else if (formData.name.length > 100) {
+      newErrors.name = "Le nom ne doit pas dépasser 100 caractères";
     }
 
-    if (!formData.email.trim()) {
-      newErrors.email = "L'email est requis";
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Email invalide";
+    if (!formData.phone.trim()) {
+      newErrors.phone = "Le numéro de téléphone est requis";
+    } else {
+      // Clean phone number for validation
+      const cleanPhone = formData.phone.replace(/[\s\-\+]/g, "");
+      if (!/^[0-9]{7,15}$/.test(cleanPhone)) {
+        newErrors.phone = "Numéro de téléphone invalide";
+      }
     }
 
-    if (!formData.password) {
-      newErrors.password = "Le mot de passe est requis";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Le mot de passe doit contenir au moins 6 caractères";
+    if (!formData.pin) {
+      newErrors.pin = "Le code PIN est requis";
+    } else if (!/^[0-9]{6}$/.test(formData.pin)) {
+      newErrors.pin = "Le code PIN doit contenir exactement 6 chiffres";
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Les mots de passe ne correspondent pas";
+    if (formData.pin !== formData.confirmPin) {
+      newErrors.confirmPin = "Les codes PIN ne correspondent pas";
     }
 
     setErrors(newErrors);
@@ -54,9 +59,13 @@ const Signup = () => {
     if (!validateForm()) return;
 
     setLoading(true);
-    const { error } = await signUp(formData.email, formData.password, {
-      full_name: formData.name,
-      phone: formData.phone
+    
+    // Clean phone number and use it to create a unique identifier
+    const cleanPhone = formData.phone.replace(/[\s\-\+]/g, "");
+    
+    const { error } = await signUp(cleanPhone, formData.pin, {
+      full_name: formData.name.trim(),
+      phone: formData.phone.trim()
     });
     setLoading(false);
 
@@ -64,7 +73,7 @@ const Signup = () => {
       if (error.message.includes("already registered")) {
         toast({
           title: "Compte existant",
-          description: "Un compte avec cet email existe déjà. Veuillez vous connecter.",
+          description: "Ce numéro de téléphone est déjà utilisé. Veuillez vous connecter.",
           variant: "destructive"
         });
       } else {
@@ -137,6 +146,7 @@ const Signup = () => {
                 placeholder="Mohamed Ali"
                 value={formData.name}
                 onChange={(e) => handleInputChange("name", e.target.value)}
+                maxLength={100}
                 className={`pl-12 h-14 rounded-2xl border-border bg-card text-foreground ${
                   errors.name ? "border-destructive" : ""
                 }`}
@@ -150,7 +160,7 @@ const Signup = () => {
           {/* Phone Input */}
           <div className="space-y-2">
             <Label htmlFor="phone" className="text-foreground font-medium">
-              Numéro de téléphone <span className="text-muted-foreground text-sm">(optionnel)</span>
+              Numéro de téléphone
             </Label>
             <div className="relative">
               <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -160,77 +170,64 @@ const Signup = () => {
                 placeholder="+269 771 23 45"
                 value={formData.phone}
                 onChange={(e) => handleInputChange("phone", e.target.value)}
-                className="pl-12 h-14 rounded-2xl border-border bg-card text-foreground"
-              />
-            </div>
-          </div>
-
-          {/* Email Input */}
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-foreground font-medium">
-              Email
-            </Label>
-            <div className="relative">
-              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="votre@email.com"
-                value={formData.email}
-                onChange={(e) => handleInputChange("email", e.target.value)}
+                maxLength={20}
                 className={`pl-12 h-14 rounded-2xl border-border bg-card text-foreground ${
-                  errors.email ? "border-destructive" : ""
+                  errors.phone ? "border-destructive" : ""
                 }`}
               />
             </div>
-            {errors.email && (
-              <p className="text-destructive text-sm">{errors.email}</p>
+            {errors.phone && (
+              <p className="text-destructive text-sm">{errors.phone}</p>
             )}
           </div>
 
-          {/* Password Input */}
+          {/* PIN Input */}
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-foreground font-medium">
-              Mot de passe
+            <Label htmlFor="pin" className="text-foreground font-medium">
+              Code PIN (6 chiffres)
             </Label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                id="password"
+                id="pin"
                 type="password"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                className={`pl-12 h-14 rounded-2xl border-border bg-card text-foreground ${
-                  errors.password ? "border-destructive" : ""
+                placeholder="••••••"
+                value={formData.pin}
+                onChange={(e) => handleInputChange("pin", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                maxLength={6}
+                inputMode="numeric"
+                className={`pl-12 h-14 rounded-2xl border-border bg-card text-foreground text-center tracking-[0.5em] font-mono text-xl ${
+                  errors.pin ? "border-destructive" : ""
                 }`}
               />
             </div>
-            {errors.password && (
-              <p className="text-destructive text-sm">{errors.password}</p>
+            {errors.pin && (
+              <p className="text-destructive text-sm">{errors.pin}</p>
             )}
           </div>
 
-          {/* Confirm Password Input */}
+          {/* Confirm PIN Input */}
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword" className="text-foreground font-medium">
-              Confirmer le mot de passe
+            <Label htmlFor="confirmPin" className="text-foreground font-medium">
+              Confirmer le code PIN
             </Label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                id="confirmPassword"
+                id="confirmPin"
                 type="password"
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                className={`pl-12 h-14 rounded-2xl border-border bg-card text-foreground ${
-                  errors.confirmPassword ? "border-destructive" : ""
+                placeholder="••••••"
+                value={formData.confirmPin}
+                onChange={(e) => handleInputChange("confirmPin", e.target.value.replace(/\D/g, "").slice(0, 6))}
+                maxLength={6}
+                inputMode="numeric"
+                className={`pl-12 h-14 rounded-2xl border-border bg-card text-foreground text-center tracking-[0.5em] font-mono text-xl ${
+                  errors.confirmPin ? "border-destructive" : ""
                 }`}
               />
             </div>
-            {errors.confirmPassword && (
-              <p className="text-destructive text-sm">{errors.confirmPassword}</p>
+            {errors.confirmPin && (
+              <p className="text-destructive text-sm">{errors.confirmPin}</p>
             )}
           </div>
 
