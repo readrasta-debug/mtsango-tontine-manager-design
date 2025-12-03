@@ -6,12 +6,15 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, metadata?: { full_name?: string; phone?: string }) => Promise<{ error: Error | null }>;
-  signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
+  signUp: (phone: string, pin: string, metadata?: { full_name?: string; phone?: string }) => Promise<{ error: Error | null }>;
+  signIn: (phone: string, pin: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Convert phone to a valid email format for Supabase auth
+const phoneToEmail = (phone: string) => `${phone}@mtsango.local`;
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -38,24 +41,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, metadata?: { full_name?: string; phone?: string }) => {
+  const signUp = async (phone: string, pin: string, metadata?: { full_name?: string; phone?: string }) => {
+    const email = phoneToEmail(phone);
     const redirectUrl = `${window.location.origin}/dashboard`;
     
     const { error } = await supabase.auth.signUp({
       email,
-      password,
+      password: pin,
       options: {
         emailRedirectTo: redirectUrl,
-        data: metadata
+        data: {
+          ...metadata,
+          phone: metadata?.phone || phone
+        }
       }
     });
     return { error };
   };
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (phone: string, pin: string) => {
+    const email = phoneToEmail(phone);
+    
     const { error } = await supabase.auth.signInWithPassword({
       email,
-      password
+      password: pin
     });
     return { error };
   };
