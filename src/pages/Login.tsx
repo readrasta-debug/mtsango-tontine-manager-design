@@ -4,16 +4,48 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Phone, Lock } from "lucide-react";
+import { Mail, Lock, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import logo from "@/assets/mtsango-logo.png";
 
 const Login = () => {
   const navigate = useNavigate();
-  const [phone, setPhone] = useState("");
-  const [pin, setPin] = useState("");
+  const { signIn } = useAuth();
+  const { toast } = useToast();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    navigate("/dashboard");
+  const handleLogin = async () => {
+    if (!email || !password) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setLoading(true);
+    const { error } = await signIn(email, password);
+    setLoading(false);
+
+    if (error) {
+      toast({
+        title: "Erreur de connexion",
+        description: error.message === "Invalid login credentials" 
+          ? "Email ou mot de passe incorrect" 
+          : error.message,
+        variant: "destructive"
+      });
+    } else {
+      toast({
+        title: "Connexion réussie",
+        description: "Bienvenue sur MTSANGO!"
+      });
+      navigate("/dashboard");
+    }
   };
 
   return (
@@ -39,55 +71,58 @@ const Login = () => {
         className="flex-1 px-6 py-8"
       >
         <div className="space-y-6 max-w-md mx-auto">
-          {/* Phone Input */}
+          {/* Email Input */}
           <div className="space-y-2">
-            <Label htmlFor="phone" className="text-foreground font-medium">
-              Numéro de téléphone
+            <Label htmlFor="email" className="text-foreground font-medium">
+              Adresse email
             </Label>
             <div className="relative">
-              <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                id="phone"
-                type="tel"
-                placeholder="+269 771 23 45"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="votre@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="pl-12 h-14 rounded-2xl border-border bg-card text-foreground"
               />
             </div>
           </div>
 
-          {/* PIN Input */}
+          {/* Password Input */}
           <div className="space-y-2">
-            <Label htmlFor="pin" className="text-foreground font-medium">
-              Code PIN
+            <Label htmlFor="password" className="text-foreground font-medium">
+              Mot de passe
             </Label>
             <div className="relative">
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
               <Input
-                id="pin"
+                id="password"
                 type="password"
-                placeholder="••••"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                maxLength={4}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="pl-12 h-14 rounded-2xl border-border bg-card text-foreground"
               />
             </div>
           </div>
 
-          {/* Forgot PIN */}
+          {/* Forgot Password */}
           <div className="flex justify-end">
             <Button variant="link" className="text-secondary p-0 h-auto">
-              Code PIN oublié ?
+              Mot de passe oublié ?
             </Button>
           </div>
 
           {/* Login Button */}
           <Button
             onClick={handleLogin}
+            disabled={loading}
             className="w-full h-14 text-lg font-semibold rounded-2xl gradient-primary shadow-medium mt-8"
           >
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin mr-2" />
+            ) : null}
             Se connecter
           </Button>
 
