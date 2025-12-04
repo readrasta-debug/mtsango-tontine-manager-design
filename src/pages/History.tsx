@@ -1,56 +1,62 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
-import { ArrowDownCircle, ArrowUpCircle, Calendar } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Calendar, Loader2 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 const History = () => {
-  const transactions = [
-    {
-      id: 1,
-      type: "given",
-      tontine: "Tontine Famille",
-      amount: "15 000 KMF",
-      recipient: "Ahmed Mohamed",
-      date: "15 Nov 2025",
-      time: "14:30",
+  const { user } = useAuth();
+
+  // Fetch contributions with tontine and member info
+  const { data: contributions, isLoading } = useQuery({
+    queryKey: ["contributions-history", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      
+      // First get user's tontines
+      const { data: tontines, error: tontinesError } = await supabase
+        .from("tontines")
+        .select("id, name")
+        .eq("user_id", user.id);
+      
+      if (tontinesError) throw tontinesError;
+      if (!tontines || tontines.length === 0) return [];
+
+      const tontineIds = tontines.map((t) => t.id);
+
+      // Get contributions for these tontines
+      const { data: contribs, error: contribsError } = await supabase
+        .from("contributions")
+        .select(`
+          *,
+          from_member:tontine_members!contributions_from_member_id_fkey(name),
+          to_member:tontine_members!contributions_to_member_id_fkey(name)
+        `)
+        .in("tontine_id", tontineIds)
+        .order("created_at", { ascending: false });
+
+      if (contribsError) throw contribsError;
+
+      // Map tontine names
+      const tontineMap = Object.fromEntries(tontines.map((t) => [t.id, t.name]));
+      
+      return contribs?.map((c) => ({
+        ...c,
+        tontine_name: tontineMap[c.tontine_id] || "Tontine",
+      })) || [];
     },
-    {
-      id: 2,
-      type: "received",
-      tontine: "Tontine Bureau",
-      amount: "20 000 KMF",
-      sender: "Fatima Ali",
-      date: "10 Nov 2025",
-      time: "10:15",
-    },
-    {
-      id: 3,
-      type: "given",
-      tontine: "Tontine Amis",
-      amount: "10 000 KMF",
-      recipient: "Said Hassan",
-      date: "5 Nov 2025",
-      time: "16:45",
-    },
-    {
-      id: 4,
-      type: "given",
-      tontine: "Tontine Bureau",
-      amount: "20 000 KMF",
-      recipient: "Halima Ibrahim",
-      date: "1 Nov 2025",
-      time: "09:20",
-    },
-    {
-      id: 5,
-      type: "received",
-      tontine: "Tontine Famille",
-      amount: "15 000 KMF",
-      sender: "Moussa Abdou",
-      date: "25 Oct 2025",
-      time: "11:00",
-    },
-  ];
+    enabled: !!user?.id,
+  });
+
+  // Calculate totals
+  const totalGiven = contributions?.reduce((sum, c) => {
+    if (c.status === "paid") return sum + Number(c.amount);
+    return sum;
+  }, 0) || 0;
+
+  const totalReceived = contributions?.filter((c) => c.status === "paid").length || 0;
 
   return (
     <div className="min-h-screen bg-background pb-24">
@@ -71,7 +77,9 @@ const History = () => {
               </div>
               <p className="text-muted-foreground text-xs">Donné</p>
             </div>
-            <p className="text-foreground font-bold text-xl">45K</p>
+            <p className="text-foreground font-bold text-xl">
+              {totalGiven >= 1000 ? `${Math.round(totalGiven / 1000)}K` : totalGiven}
+            </p>
             <p className="text-muted-foreground text-xs mt-1">Total KMF</p>
           </Card>
 
@@ -80,10 +88,10 @@ const History = () => {
               <div className="w-8 h-8 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center">
                 <ArrowUpCircle className="w-4 h-4" />
               </div>
-              <p className="text-muted-foreground text-xs">Reçu</p>
+              <p className="text-muted-foreground text-xs">Transactions</p>
             </div>
-            <p className="text-foreground font-bold text-xl">35K</p>
-            <p className="text-muted-foreground text-xs mt-1">Total KMF</p>
+            <p className="text-foreground font-bold text-xl">{totalReceived}</p>
+            <p className="text-muted-foreground text-xs mt-1">Complétées</p>
           </Card>
         </div>
       </motion.div>
@@ -95,61 +103,82 @@ const History = () => {
           <span className="text-sm font-medium">Transactions récentes</span>
         </div>
 
-        <div className="space-y-3">
-          {transactions.map((transaction, index) => (
-            <motion.div
-              key={transaction.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <Card className="p-4 border-border shadow-soft">
-                <div className="flex items-start gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                    transaction.type === "given"
-                      ? "bg-accent/10 text-accent"
-                      : "bg-secondary/10 text-secondary"
-                  }`}>
-                    {transaction.type === "given" ? (
-                      <ArrowDownCircle className="w-6 h-6" />
-                    ) : (
-                      <ArrowUpCircle className="w-6 h-6" />
-                    )}
-                  </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-secondary" />
+          </div>
+        ) : contributions && contributions.length > 0 ? (
+          <div className="space-y-3">
+            {contributions.map((contribution, index) => {
+              const isGiven = contribution.status === "paid";
+              const fromName = contribution.from_member?.name || "Membre";
+              const toName = contribution.to_member?.name || "Membre";
+              const date = contribution.paid_at 
+                ? new Date(contribution.paid_at)
+                : new Date(contribution.created_at);
 
-                  <div className="flex-1">
-                    <div className="flex items-start justify-between mb-1">
-                      <div>
-                        <p className="text-foreground font-semibold">
-                          {transaction.type === "given" ? "Contribution donnée" : "Contribution reçue"}
-                        </p>
-                        <p className="text-muted-foreground text-sm">
-                          {transaction.tontine}
-                        </p>
-                      </div>
-                      <p className={`font-bold ${
-                        transaction.type === "given" ? "text-accent" : "text-secondary"
+              return (
+                <motion.div
+                  key={contribution.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  <Card className="p-4 border-border shadow-soft">
+                    <div className="flex items-start gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                        isGiven
+                          ? "bg-accent/10 text-accent"
+                          : "bg-secondary/10 text-secondary"
                       }`}>
-                        {transaction.type === "given" ? "-" : "+"} {transaction.amount}
-                      </p>
-                    </div>
+                        {isGiven ? (
+                          <ArrowDownCircle className="w-6 h-6" />
+                        ) : (
+                          <ArrowUpCircle className="w-6 h-6" />
+                        )}
+                      </div>
 
-                    <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
-                      <p className="text-xs text-muted-foreground">
-                        {transaction.type === "given" 
-                          ? `À ${transaction.recipient}` 
-                          : `De ${transaction.sender}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {transaction.date} • {transaction.time}
-                      </p>
+                      <div className="flex-1">
+                        <div className="flex items-start justify-between mb-1">
+                          <div>
+                            <p className="text-foreground font-semibold">
+                              {isGiven ? "Contribution donnée" : "En attente"}
+                            </p>
+                            <p className="text-muted-foreground text-sm">
+                              {contribution.tontine_name}
+                            </p>
+                          </div>
+                          <p className={`font-bold ${
+                            isGiven ? "text-accent" : "text-secondary"
+                          }`}>
+                            {isGiven ? "-" : ""} {Number(contribution.amount).toLocaleString()} KMF
+                          </p>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+                          <p className="text-xs text-muted-foreground">
+                            De {fromName} → {toName}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {date.toLocaleDateString("fr-FR", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          ))}
-        </div>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+        ) : (
+          <Card className="p-8 text-center border-dashed border-2 border-border">
+            <p className="text-muted-foreground">Aucune transaction pour le moment</p>
+          </Card>
+        )}
       </div>
 
       <BottomNav />
