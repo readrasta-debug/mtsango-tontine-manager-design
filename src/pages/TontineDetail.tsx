@@ -1,16 +1,47 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Users, TrendingUp, TrendingDown, Calendar, CheckCircle, XCircle, MoreVertical, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { 
+  ArrowLeft, Users, TrendingUp, TrendingDown, Calendar, 
+  CheckCircle, XCircle, MoreVertical, Loader2, Plus, UserPlus, X 
+} from "lucide-react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const TontineDetail = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [showContribution, setShowContribution] = useState<"give" | "receive" | null>(null);
+  const [memberName, setMemberName] = useState("");
+  const [memberPhone, setMemberPhone] = useState("");
+  const [isCurrentUser, setIsCurrentUser] = useState(false);
+  const [selectedFromMember, setSelectedFromMember] = useState("");
+  const [selectedToMember, setSelectedToMember] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Fetch tontine details
   const { data: tontine, isLoading: tontineLoading } = useQuery({
@@ -70,13 +101,88 @@ const TontineDetail = () => {
     return sum;
   }, 0) || 0;
 
-  // Find current user's position
   const currentUserMember = members?.find((m) => m.is_current_user);
   const myPosition = currentUserMember?.position || 0;
-
-  // Calculate current round (simplified: count completed contributions / members)
   const paidContributions = contributions?.filter((c) => c.status === "paid").length || 0;
   const currentRound = Math.floor(paidContributions / (members?.length || 1)) + 1;
+
+  const handleAddMember = async () => {
+    if (!memberName.trim() || !tontine?.id) return;
+
+    setIsSubmitting(true);
+    try {
+      const nextPosition = (members?.length || 0) + 1;
+      
+      const { error } = await supabase
+        .from("tontine_members")
+        .insert({
+          tontine_id: tontine.id,
+          name: memberName.trim(),
+          phone: memberPhone.trim() || null,
+          position: nextPosition,
+          is_current_user: isCurrentUser,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Membre ajouté",
+        description: `${memberName} a été ajouté à la tontine`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["tontine_members", id] });
+      setShowAddMember(false);
+      setMemberName("");
+      setMemberPhone("");
+      setIsCurrentUser(false);
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'ajouter le membre",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleContribution = async (type: "give" | "receive") => {
+    if (!selectedFromMember || !selectedToMember || !tontine?.id) return;
+
+    setIsSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from("contributions")
+        .insert({
+          tontine_id: tontine.id,
+          from_member_id: selectedFromMember,
+          to_member_id: selectedToMember,
+          amount: tontine.amount,
+          status: type === "give" ? "paid" : "pending",
+          paid_at: type === "give" ? new Date().toISOString() : null,
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: type === "give" ? "Contribution enregistrée" : "Réception enregistrée",
+        description: `La transaction a été enregistrée avec succès`,
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["contributions", id] });
+      setShowContribution(null);
+      setSelectedFromMember("");
+      setSelectedToMember("");
+    } catch (error: any) {
+      toast({
+        title: "Erreur",
+        description: error.message || "Impossible d'enregistrer la contribution",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const isLoading = tontineLoading || membersLoading;
 
@@ -181,14 +287,6 @@ const TontineDetail = () => {
                 <span className="text-muted-foreground text-sm">Fréquence</span>
                 <span className="text-foreground font-semibold">{tontine.frequency}</span>
               </div>
-              {tontine.start_date && (
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-muted-foreground text-sm">Date de début</span>
-                  <span className="text-foreground font-semibold">
-                    {new Date(tontine.start_date).toLocaleDateString("fr-FR")}
-                  </span>
-                </div>
-              )}
             </div>
           </Card>
         </motion.div>
@@ -203,13 +301,22 @@ const TontineDetail = () => {
             <h3 className="text-foreground font-semibold text-lg">
               Membres ({members?.length || 0}/{tontine.total_members})
             </h3>
-            <span className="text-sm text-muted-foreground">Tour {currentRound}</span>
+            {(members?.length || 0) < tontine.total_members && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowAddMember(true)}
+                className="text-secondary border-secondary"
+              >
+                <UserPlus className="w-4 h-4 mr-1" />
+                Ajouter
+              </Button>
+            )}
           </div>
           
           {members && members.length > 0 ? (
             <div className="space-y-3">
               {members.map((member, index) => {
-                // Check if this member has paid contributions
                 const memberContributions = contributions?.filter(
                   (c) => c.from_member_id === member.id && c.status === "paid"
                 );
@@ -245,10 +352,8 @@ const TontineDetail = () => {
                             </p>
                             <p className="text-xs text-muted-foreground">
                               Position #{member.position}
+                              {member.phone && ` • ${member.phone}`}
                             </p>
-                            {member.is_current_user && isCurrentTurn && (
-                              <p className="text-xs text-secondary font-medium">C'est votre tour</p>
-                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-3">
@@ -271,26 +376,168 @@ const TontineDetail = () => {
             </div>
           ) : (
             <Card className="p-6 text-center border-dashed border-2 border-border">
-              <p className="text-muted-foreground">Aucun membre dans cette tontine</p>
+              <Users className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+              <p className="text-muted-foreground mb-3">Aucun membre dans cette tontine</p>
+              <Button onClick={() => setShowAddMember(true)} className="bg-secondary hover:bg-secondary/90">
+                <Plus className="w-4 h-4 mr-2" />
+                Ajouter le premier membre
+              </Button>
             </Card>
           )}
         </motion.div>
 
         {/* Action Buttons */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="grid grid-cols-2 gap-4"
-        >
-          <Button className="h-12 rounded-xl bg-secondary hover:bg-secondary/90 font-semibold">
-            J'ai donné
-          </Button>
-          <Button variant="outline" className="h-12 rounded-xl font-semibold border-2">
-            J'ai reçu
-          </Button>
-        </motion.div>
+        {members && members.length >= 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="grid grid-cols-2 gap-4"
+          >
+            <Button 
+              onClick={() => setShowContribution("give")}
+              className="h-12 rounded-xl bg-secondary hover:bg-secondary/90 font-semibold"
+            >
+              J'ai donné
+            </Button>
+            <Button 
+              onClick={() => setShowContribution("receive")}
+              variant="outline" 
+              className="h-12 rounded-xl font-semibold border-2"
+            >
+              J'ai reçu
+            </Button>
+          </motion.div>
+        )}
       </div>
+
+      {/* Add Member Dialog */}
+      <Dialog open={showAddMember} onOpenChange={setShowAddMember}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ajouter un membre</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="memberName">Nom du membre *</Label>
+              <Input
+                id="memberName"
+                placeholder="Ex: Mohamed Ali"
+                value={memberName}
+                onChange={(e) => setMemberName(e.target.value)}
+                className="mt-1.5"
+                maxLength={100}
+              />
+            </div>
+            <div>
+              <Label htmlFor="memberPhone">Téléphone (optionnel)</Label>
+              <Input
+                id="memberPhone"
+                placeholder="Ex: +269 321 45 67"
+                value={memberPhone}
+                onChange={(e) => setMemberPhone(e.target.value)}
+                className="mt-1.5"
+                maxLength={20}
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="isCurrentUser"
+                checked={isCurrentUser}
+                onChange={(e) => setIsCurrentUser(e.target.checked)}
+                className="rounded border-border"
+              />
+              <Label htmlFor="isCurrentUser" className="text-sm font-normal cursor-pointer">
+                C'est moi
+              </Label>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowAddMember(false)}
+                className="flex-1"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={handleAddMember}
+                disabled={!memberName.trim() || isSubmitting}
+                className="flex-1 bg-secondary hover:bg-secondary/90"
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Ajouter"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Contribution Dialog */}
+      <Dialog open={!!showContribution} onOpenChange={() => setShowContribution(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {showContribution === "give" ? "Enregistrer une contribution" : "Enregistrer une réception"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label>De qui ? *</Label>
+              <Select value={selectedFromMember} onValueChange={setSelectedFromMember}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Sélectionner un membre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {members?.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name} {m.is_current_user && "(Vous)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>À qui ? *</Label>
+              <Select value={selectedToMember} onValueChange={setSelectedToMember}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="Sélectionner un membre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {members?.filter((m) => m.id !== selectedFromMember).map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name} {m.is_current_user && "(Vous)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="p-4 bg-muted rounded-xl">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Montant</span>
+                <span className="text-foreground font-bold">
+                  {Number(tontine?.amount || 0).toLocaleString()} KMF
+                </span>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowContribution(null)}
+                className="flex-1"
+              >
+                Annuler
+              </Button>
+              <Button
+                onClick={() => showContribution && handleContribution(showContribution)}
+                disabled={!selectedFromMember || !selectedToMember || isSubmitting}
+                className="flex-1 bg-secondary hover:bg-secondary/90"
+              >
+                {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

@@ -11,6 +11,7 @@ import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
 import Tontines from "./pages/Tontines";
 import TontineDetail from "./pages/TontineDetail";
+import NewTontine from "./pages/NewTontine";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -63,6 +64,7 @@ const AppRoutes = () => (
     <Route path="/signup" element={<PublicRoute><Signup /></PublicRoute>} />
     <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
     <Route path="/tontines" element={<ProtectedRoute><Tontines /></ProtectedRoute>} />
+    <Route path="/tontines/new" element={<ProtectedRoute><NewTontine /></ProtectedRoute>} />
     <Route path="/tontines/:id" element={<ProtectedRoute><TontineDetail /></ProtectedRoute>} />
     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
