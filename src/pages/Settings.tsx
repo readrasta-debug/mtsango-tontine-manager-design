@@ -3,12 +3,63 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
   User, Lock, Bell, Globe, Moon, Download, 
-  Upload, Info, LogOut, ChevronRight 
+  Upload, Info, LogOut, ChevronRight, Loader2
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import logo from "@/assets/mtsango-logo.png";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Fetch user profile
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate("/login");
+      toast({
+        title: "Déconnexion réussie",
+        description: "À bientôt !",
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: "Impossible de se déconnecter",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const userName = profile?.full_name || "Utilisateur";
+  const userPhone = profile?.phone || "";
+  const userInitials = userName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+
   const settingsSections = [
     {
       title: "Compte",
@@ -52,16 +103,22 @@ const Settings = () => {
 
         {/* Profile Card */}
         <Card className="p-5 bg-white/95 border-0 shadow-soft">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center">
-              <span className="text-white text-2xl font-bold">MA</span>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <Loader2 className="w-6 h-6 animate-spin text-secondary" />
             </div>
-            <div className="flex-1">
-              <h3 className="text-foreground font-bold text-lg">Mohamed Ali</h3>
-              <p className="text-muted-foreground text-sm">+269 771 23 45</p>
+          ) : (
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full gradient-primary flex items-center justify-center">
+                <span className="text-white text-2xl font-bold">{userInitials}</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-foreground font-bold text-lg">{userName}</h3>
+                <p className="text-muted-foreground text-sm">{userPhone}</p>
+              </div>
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
             </div>
-            <ChevronRight className="w-5 h-5 text-muted-foreground" />
-          </div>
+          )}
         </Card>
       </motion.div>
 
@@ -108,6 +165,7 @@ const Settings = () => {
           transition={{ delay: 0.5 }}
         >
           <Button
+            onClick={handleLogout}
             variant="outline"
             className="w-full h-14 rounded-2xl border-2 border-destructive text-destructive hover:bg-destructive hover:text-white font-semibold"
           >
