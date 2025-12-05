@@ -17,8 +17,8 @@ const tontineSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères").max(100),
   description: z.string().max(500).optional(),
   amount: z.number().min(1000, "Le montant minimum est de 1000 KMF"),
-  frequency: z.enum(["Quotidien", "Hebdomadaire", "Mensuel"]),
-  total_members: z.number().min(2, "Minimum 2 membres").max(50, "Maximum 50 membres"),
+  frequency: z.enum(["weekly", "biweekly", "monthly"]),
+  total_members: z.number().min(2, "Minimum 2 membres"),
   start_date: z.string().optional(),
 });
 
@@ -33,7 +33,7 @@ const NewTontine = () => {
     name: "",
     description: "",
     amount: "",
-    frequency: "Mensuel",
+    frequency: "monthly",
     total_members: "2",
     start_date: "",
   });
@@ -221,9 +221,9 @@ const NewTontine = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Quotidien">Quotidien</SelectItem>
-                  <SelectItem value="Hebdomadaire">Hebdomadaire</SelectItem>
-                  <SelectItem value="Mensuel">Mensuel</SelectItem>
+                  <SelectItem value="weekly">Hebdomadaire</SelectItem>
+                  <SelectItem value="biweekly">Bi-hebdomadaire</SelectItem>
+                  <SelectItem value="monthly">Mensuel</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -250,7 +250,6 @@ const NewTontine = () => {
                 onChange={(e) => handleChange("total_members", e.target.value)}
                 className="h-12 rounded-xl"
                 min={2}
-                max={50}
               />
               {errors.total_members && (
                 <p className="text-destructive text-sm mt-1">{errors.total_members}</p>
