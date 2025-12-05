@@ -17,7 +17,7 @@ const tontineSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères").max(100),
   description: z.string().max(500).optional(),
   amount: z.number().min(1000, "Le montant minimum est de 1000 KMF"),
-  frequency: z.enum(["weekly", "biweekly", "monthly"]),
+  frequency: z.enum(["weekly", "biweekly", "monthly", "flexible"]),
   total_members: z.number().min(2, "Minimum 2 membres"),
   start_date: z.string().optional(),
 });
@@ -224,6 +224,7 @@ const NewTontine = () => {
                   <SelectItem value="weekly">Hebdomadaire</SelectItem>
                   <SelectItem value="biweekly">Bi-hebdomadaire</SelectItem>
                   <SelectItem value="monthly">Mensuel</SelectItem>
+                  <SelectItem value="flexible">Sans fréquence fixe</SelectItem>
                 </SelectContent>
               </Select>
             </div>
