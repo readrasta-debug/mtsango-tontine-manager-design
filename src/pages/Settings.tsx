@@ -1,13 +1,15 @@
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { 
-  User, Lock, Bell, Globe, Moon, Download, 
+  User, Lock, Bell, Globe, Moon, Sun, Download, 
   Upload, Info, LogOut, ChevronRight, Loader2
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import logo from "@/assets/mtsango-logo.png";
 import { useAuth } from "@/hooks/useAuth";
+import { useTheme } from "@/hooks/useTheme";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -15,8 +17,10 @@ import { useToast } from "@/hooks/use-toast";
 
 const Settings = () => {
   const { user, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const isDarkMode = theme === "dark";
 
   // Fetch user profile
   const { data: profile, isLoading } = useQuery({
@@ -73,7 +77,7 @@ const Settings = () => {
       items: [
         { icon: Bell, label: "Notifications", action: "notifications" },
         { icon: Globe, label: "Langue", value: "Français", action: "language" },
-        { icon: Moon, label: "Thème", value: "Clair", action: "theme" },
+        { icon: isDarkMode ? Moon : Sun, label: "Mode sombre", action: "theme", isThemeToggle: true },
       ],
     },
     {
@@ -136,11 +140,14 @@ const Settings = () => {
             </h3>
             <Card className="border-border shadow-soft overflow-hidden">
               {section.items.map((item, itemIndex) => (
-                <button
+                <div
                   key={item.label}
-                  className={`w-full p-4 flex items-center gap-4 hover:bg-muted/50 transition-smooth ${
+                  className={`w-full p-4 flex items-center gap-4 ${
+                    !item.isThemeToggle ? "hover:bg-muted/50 cursor-pointer" : ""
+                  } transition-smooth ${
                     itemIndex !== section.items.length - 1 ? "border-b border-border/50" : ""
                   }`}
+                  onClick={() => !item.isThemeToggle && console.log(item.action)}
                 >
                   <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
                     <item.icon className="w-5 h-5" />
@@ -151,8 +158,16 @@ const Settings = () => {
                       <p className="text-muted-foreground text-sm">{item.value}</p>
                     )}
                   </div>
-                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                </button>
+                  {item.isThemeToggle ? (
+                    <Switch
+                      checked={isDarkMode}
+                      onCheckedChange={toggleTheme}
+                      className="data-[state=checked]:bg-primary"
+                    />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                  )}
+                </div>
               ))}
             </Card>
           </motion.div>
