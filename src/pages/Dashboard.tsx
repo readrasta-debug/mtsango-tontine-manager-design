@@ -178,12 +178,12 @@ const Dashboard = () => {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card className="p-4 bg-white/95 border-0 shadow-soft">
+              <Card className="p-4 bg-card border-0 shadow-soft">
                 <div className={`${stat.bgColor} ${stat.color} w-10 h-10 rounded-xl flex items-center justify-center mb-3`}>
                   <stat.icon className="w-5 h-5" />
                 </div>
                 <p className="text-muted-foreground text-xs mb-1">{stat.label}</p>
-                <p className="text-foreground font-bold text-lg">{stat.value}</p>
+                <p className="text-card-foreground font-bold text-lg">{stat.value}</p>
               </Card>
             </motion.div>
           ))}
