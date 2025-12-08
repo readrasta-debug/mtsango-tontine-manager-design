@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { BackupDialog } from "@/components/BackupDialog";
+import { RestoreDialog } from "@/components/RestoreDialog";
 
 const Settings = () => {
   const { user, signOut } = useAuth();
@@ -21,6 +24,9 @@ const Settings = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const isDarkMode = theme === "dark";
+  
+  const [backupDialogOpen, setBackupDialogOpen] = useState(false);
+  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
 
   // Fetch user profile
   const { data: profile, isLoading } = useQuery({
@@ -147,7 +153,11 @@ const Settings = () => {
                   } transition-smooth ${
                     itemIndex !== section.items.length - 1 ? "border-b border-border/50" : ""
                   }`}
-                  onClick={() => !item.isThemeToggle && console.log(item.action)}
+                  onClick={() => {
+                    if (item.action === "backup") setBackupDialogOpen(true);
+                    else if (item.action === "restore") setRestoreDialogOpen(true);
+                    else if (!item.isThemeToggle) console.log(item.action);
+                  }}
                 >
                   <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground">
                     <item.icon className="w-5 h-5" />
@@ -203,6 +213,9 @@ const Settings = () => {
       </div>
 
       <BottomNav />
+      
+      <BackupDialog open={backupDialogOpen} onOpenChange={setBackupDialogOpen} />
+      <RestoreDialog open={restoreDialogOpen} onOpenChange={setRestoreDialogOpen} />
     </div>
   );
 };
