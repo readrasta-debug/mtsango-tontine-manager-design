@@ -154,7 +154,8 @@ const Settings = () => {
                     itemIndex !== section.items.length - 1 ? "border-b border-border/50" : ""
                   }`}
                   onClick={() => {
-                    if (item.action === "backup") setBackupDialogOpen(true);
+                    if (item.action === "profile") navigate("/profile");
+                    else if (item.action === "backup") setBackupDialogOpen(true);
                     else if (item.action === "restore") setRestoreDialogOpen(true);
                     else if (!item.isThemeToggle) console.log(item.action);
                   }}

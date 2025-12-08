@@ -15,6 +15,7 @@ import TontineDetail from "./pages/TontineDetail";
 import NewTontine from "./pages/NewTontine";
 import History from "./pages/History";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -69,6 +70,7 @@ const AppRoutes = () => (
     <Route path="/tontines/:id" element={<ProtectedRoute><TontineDetail /></ProtectedRoute>} />
     <Route path="/history" element={<ProtectedRoute><History /></ProtectedRoute>} />
     <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+    <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
