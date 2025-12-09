@@ -418,12 +418,12 @@ const TontineDetail = () => {
                   J'ai reçu
                 </Button>
               ) : (
-                // It's not my turn - I give to the person whose turn it is
+                // It's not my turn - I give to someone
                 <Button 
                   onClick={() => setShowContribution("give")}
                   className="w-full h-12 rounded-xl bg-secondary hover:bg-secondary/90 font-semibold"
                 >
-                  J'ai donné à {receivingMember?.name || "..."}
+                  J'ai donné
                 </Button>
               )}
             </motion.div>
@@ -492,69 +492,139 @@ const TontineDetail = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Contribution Dialog */}
-      <Dialog open={!!showContribution} onOpenChange={() => setShowContribution(null)}>
+      {/* Contribution Dialog - "J'ai donné" */}
+      <Dialog open={showContribution === "give"} onOpenChange={() => setShowContribution(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {showContribution === "give" ? "Enregistrer une contribution" : "Enregistrer une réception"}
-            </DialogTitle>
+            <DialogTitle>J'ai donné à qui ?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-4">
+            {members?.filter((m) => !m.is_current_user).map((member) => (
+              <Button
+                key={member.id}
+                variant="outline"
+                className="w-full h-14 justify-start text-left rounded-xl border-2 hover:border-secondary hover:bg-secondary/10"
+                onClick={() => {
+                  const currentUserM = members?.find((m) => m.is_current_user);
+                  if (currentUserM) {
+                    setSelectedFromMember(currentUserM.id);
+                    setSelectedToMember(member.id);
+                  }
+                }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
+                    <span className="text-secondary font-semibold">{member.position}</span>
+                  </div>
+                  <div>
+                    <p className="font-medium">{member.name}</p>
+                    {member.phone && <p className="text-xs text-muted-foreground">{member.phone}</p>}
+                  </div>
+                </div>
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Contribution Dialog */}
+      <Dialog open={!!selectedFromMember && !!selectedToMember && showContribution === "give"} onOpenChange={() => { setSelectedFromMember(""); setSelectedToMember(""); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmer la contribution</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            <div>
-              <Label>De qui ? *</Label>
-              <Select value={selectedFromMember} onValueChange={setSelectedFromMember}>
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Sélectionner un membre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {members?.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name} {m.is_current_user && "(Vous)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>À qui ? *</Label>
-              <Select value={selectedToMember} onValueChange={setSelectedToMember}>
-                <SelectTrigger className="mt-1.5">
-                  <SelectValue placeholder="Sélectionner un membre" />
-                </SelectTrigger>
-                <SelectContent>
-                  {members?.filter((m) => m.id !== selectedFromMember).map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
-                      {m.name} {m.is_current_user && "(Vous)"}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="p-4 bg-muted rounded-xl">
+            <div className="p-4 bg-muted rounded-xl space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">À</span>
+                <span className="text-foreground font-semibold">
+                  {members?.find(m => m.id === selectedToMember)?.name}
+                </span>
+              </div>
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Montant</span>
-                <span className="text-foreground font-bold">
-                  {Number(tontine?.amount || 0).toLocaleString()} KMF
+                <span className="text-foreground font-bold text-lg">
+                  {Number(tontine?.amount || 0).toLocaleString()} {tontine?.currency}
                 </span>
               </div>
             </div>
             <div className="flex gap-3 pt-2">
               <Button
                 variant="outline"
-                onClick={() => setShowContribution(null)}
+                onClick={() => { setSelectedFromMember(""); setSelectedToMember(""); }}
                 className="flex-1"
               >
                 Annuler
               </Button>
               <Button
-                onClick={() => showContribution && handleContribution(showContribution)}
-                disabled={!selectedFromMember || !selectedToMember || isSubmitting}
+                onClick={() => handleContribution("give")}
+                disabled={isSubmitting}
                 className="flex-1 bg-secondary hover:bg-secondary/90"
               >
                 {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Confirmer"}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receive Dialog */}
+      <Dialog open={showContribution === "receive"} onOpenChange={() => setShowContribution(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>J'ai reçu de qui ?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 pt-4">
+            {members?.filter((m) => !m.is_current_user).map((member) => (
+              <Button
+                key={member.id}
+                variant="outline"
+                className="w-full h-14 justify-start text-left rounded-xl border-2 hover:border-primary hover:bg-primary/10"
+                onClick={async () => {
+                  const currentUserM = members?.find((m) => m.is_current_user);
+                  if (currentUserM && tontine) {
+                    setIsSubmitting(true);
+                    try {
+                      const { error } = await supabase
+                        .from("contributions")
+                        .insert({
+                          tontine_id: tontine.id,
+                          from_member_id: member.id,
+                          to_member_id: currentUserM.id,
+                          amount: tontine.amount,
+                          status: "paid",
+                          paid_at: new Date().toISOString(),
+                        });
+                      if (error) throw error;
+                      toast({
+                        title: "Réception enregistrée",
+                        description: `Vous avez reçu ${Number(tontine.amount).toLocaleString()} ${tontine.currency} de ${member.name}`,
+                      });
+                      queryClient.invalidateQueries({ queryKey: ["contributions", id] });
+                    } catch (error: any) {
+                      toast({
+                        title: "Erreur",
+                        description: error.message || "Impossible d'enregistrer",
+                        variant: "destructive",
+                      });
+                    } finally {
+                      setIsSubmitting(false);
+                    }
+                  }
+                }}
+                disabled={isSubmitting}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-primary font-semibold">{member.position}</span>
+                  </div>
+                  <div>
+                    <p className="font-medium">{member.name}</p>
+                    {member.phone && <p className="text-xs text-muted-foreground">{member.phone}</p>}
+                  </div>
+                </div>
+              </Button>
+            ))}
           </div>
         </DialogContent>
       </Dialog>
