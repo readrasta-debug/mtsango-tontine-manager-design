@@ -386,29 +386,49 @@ const TontineDetail = () => {
           )}
         </motion.div>
 
-        {/* Action Buttons */}
-        {members && members.length >= 2 && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="grid grid-cols-2 gap-4"
-          >
-            <Button 
-              onClick={() => setShowContribution("give")}
-              className="h-12 rounded-xl bg-secondary hover:bg-secondary/90 font-semibold"
+        {/* Action Buttons - Show based on current turn */}
+        {members && members.length >= 2 && (() => {
+          // Find the member who receives this round (position = currentRound)
+          const receivingMember = members.find(m => m.position === currentRound);
+          const isMyTurnToReceive = receivingMember?.is_current_user === true;
+          
+          return (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-3"
             >
-              J'ai donné
-            </Button>
-            <Button 
-              onClick={() => setShowContribution("receive")}
-              variant="outline" 
-              className="h-12 rounded-xl font-semibold border-2"
-            >
-              J'ai reçu
-            </Button>
-          </motion.div>
-        )}
+              {/* Info about current round */}
+              <Card className="p-4 bg-secondary/10 border-secondary/20">
+                <p className="text-sm text-center">
+                  <span className="text-muted-foreground">Tour {currentRound} - </span>
+                  <span className="font-semibold text-secondary">
+                    {receivingMember ? `${receivingMember.name} reçoit` : "En attente"}
+                  </span>
+                </p>
+              </Card>
+              
+              {isMyTurnToReceive ? (
+                // It's my turn to receive - I can mark that I received from others
+                <Button 
+                  onClick={() => setShowContribution("receive")}
+                  className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 font-semibold"
+                >
+                  J'ai reçu
+                </Button>
+              ) : (
+                // It's not my turn - I give to the person whose turn it is
+                <Button 
+                  onClick={() => setShowContribution("give")}
+                  className="w-full h-12 rounded-xl bg-secondary hover:bg-secondary/90 font-semibold"
+                >
+                  J'ai donné à {receivingMember?.name || "..."}
+                </Button>
+              )}
+            </motion.div>
+          );
+        })()}
       </div>
 
       {/* Add Member Dialog */}
