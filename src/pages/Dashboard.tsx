@@ -8,12 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  KMF: "FC",
-  EUR: "€",
-  USD: "$",
-  MGA: "Ar",
-};
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -72,76 +66,37 @@ const Dashboard = () => {
     enabled: !!user?.id,
   });
 
-  // Group tontines by currency for stats
-  const statsByCurrency = tontines?.reduce((acc, tontine) => {
-    const currency = tontine.currency || "KMF";
-    if (!acc[currency]) {
-      acc[currency] = { totalAmount: 0, count: 0 };
-    }
-    acc[currency].totalAmount += Number(tontine.amount);
-    acc[currency].count += 1;
-    return acc;
-  }, {} as Record<string, { totalAmount: number; count: number }>) || {};
-
-  // Calculate contributions stats (grouped by currency from tontine)
-  const contributionStats = contributions?.reduce((acc, c) => {
-    // Find the tontine to get its currency
-    const tontine = tontines?.find(t => t.id === c.tontine_id);
-    const currency = tontine?.currency || "KMF";
-    
-    if (!acc[currency]) {
-      acc[currency] = { given: 0, toReceive: 0 };
-    }
-    
+  // Calculate total amounts
+  const totalGiven = contributions?.reduce((acc, c) => {
     if (c.status === "paid") {
-      acc[currency].given += Number(c.amount);
-    } else if (c.status === "pending") {
-      acc[currency].toReceive += Number(c.amount);
+      return acc + Number(c.amount);
     }
     return acc;
-  }, {} as Record<string, { given: number; toReceive: number }>) || {};
+  }, 0) || 0;
 
-  // Get all unique currencies from tontines
-  const currencies = Object.keys(statsByCurrency);
-  
-  // Build stats array for each currency
-  const stats = currencies.length > 0 
-    ? currencies.flatMap(currency => {
-        const symbol = CURRENCY_SYMBOLS[currency] || currency;
-        const contribStats = contributionStats[currency] || { given: 0, toReceive: 0 };
-        return [
-          {
-            label: `Total donné (${currency})`,
-            value: `${contribStats.given.toLocaleString()} ${symbol}`,
-            icon: TrendingDown,
-            color: "text-accent",
-            bgColor: "bg-accent/10",
-          },
-          {
-            label: `À recevoir (${currency})`,
-            value: `${contribStats.toReceive.toLocaleString()} ${symbol}`,
-            icon: TrendingUp,
-            color: "text-secondary",
-            bgColor: "bg-secondary/10",
-          },
-        ];
-      })
-    : [
-        {
-          label: "Total donné",
-          value: "0 FC",
-          icon: TrendingDown,
-          color: "text-accent",
-          bgColor: "bg-accent/10",
-        },
-        {
-          label: "À recevoir",
-          value: "0 FC",
-          icon: TrendingUp,
-          color: "text-secondary",
-          bgColor: "bg-secondary/10",
-        },
-      ];
+  const totalToReceive = contributions?.reduce((acc, c) => {
+    if (c.status === "pending") {
+      return acc + Number(c.amount);
+    }
+    return acc;
+  }, 0) || 0;
+
+  const stats = [
+    {
+      label: "Total donné",
+      value: `${totalGiven.toLocaleString()} €`,
+      icon: TrendingDown,
+      color: "text-accent",
+      bgColor: "bg-accent/10",
+    },
+    {
+      label: "À recevoir",
+      value: `${totalToReceive.toLocaleString()} €`,
+      icon: TrendingUp,
+      color: "text-secondary",
+      bgColor: "bg-secondary/10",
+    },
+  ];
 
   const userName = profile?.full_name || "Utilisateur";
   const userInitials = userName
@@ -238,7 +193,7 @@ const Dashboard = () => {
                       </div>
                       <div className="text-right">
                         <p className="text-foreground font-bold">
-                          {Number(tontine.amount).toLocaleString()} {CURRENCY_SYMBOLS[tontine.currency || "KMF"] || tontine.currency}
+                          {Number(tontine.amount).toLocaleString()} €
                         </p>
                         <span className="inline-block mt-1 px-2 py-1 bg-secondary/10 text-secondary text-xs rounded-full font-medium">
                           {tontine.frequency}

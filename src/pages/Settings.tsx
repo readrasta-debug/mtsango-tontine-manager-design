@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { 
   User, Lock, Bell, Globe, Moon, Sun, Download, 
-  Upload, Info, LogOut, ChevronRight, Loader2
+  Upload, Info, LogOut, ChevronRight, Loader2, Crown
 } from "lucide-react";
 import BottomNav from "@/components/BottomNav";
 import logo from "@/assets/mtsango-logo.png";
@@ -75,6 +75,7 @@ const Settings = () => {
       title: "Compte",
       items: [
         { icon: User, label: "Profil utilisateur", action: "profile" },
+        { icon: Crown, label: "Abonnement", action: "subscription" },
         { icon: Lock, label: "Sécurité & PIN", action: "security" },
       ],
     },
@@ -155,6 +156,7 @@ const Settings = () => {
                   }`}
                   onClick={() => {
                     if (item.action === "profile") navigate("/profile");
+                    else if (item.action === "subscription") navigate("/subscription");
                     else if (item.action === "backup") setBackupDialogOpen(true);
                     else if (item.action === "restore") setRestoreDialogOpen(true);
                     else if (!item.isThemeToggle) console.log(item.action);
