@@ -13,13 +13,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 
-const CURRENCIES = [
-  { code: "KMF", name: "Franc comorien", symbol: "FC" },
-  { code: "EUR", name: "Euro", symbol: "€" },
-  { code: "USD", name: "Dollar américain", symbol: "$" },
-  { code: "MGA", name: "Ariary malgache", symbol: "Ar" },
-];
-
 const tontineSchema = z.object({
   name: z.string().min(2, "Le nom doit contenir au moins 2 caractères").max(100),
   description: z.string().max(500).optional(),
@@ -27,7 +20,6 @@ const tontineSchema = z.object({
   frequency: z.enum(["weekly", "biweekly", "monthly", "flexible"]),
   total_members: z.number().min(2, "Minimum 2 membres"),
   start_date: z.string().optional(),
-  currency: z.enum(["KMF", "EUR", "USD", "MGA"]),
 });
 
 const NewTontine = () => {
@@ -44,7 +36,6 @@ const NewTontine = () => {
     frequency: "monthly",
     total_members: "2",
     start_date: "",
-    currency: "KMF",
   });
 
   const handleChange = (field: string, value: string) => {
@@ -64,7 +55,6 @@ const NewTontine = () => {
       frequency: formData.frequency,
       total_members: Number(formData.total_members),
       start_date: formData.start_date || undefined,
-      currency: formData.currency,
     });
 
     if (!validationResult.success) {
@@ -100,7 +90,7 @@ const NewTontine = () => {
           frequency: formData.frequency,
           total_members: Number(formData.total_members),
           start_date: formData.start_date || null,
-          currency: formData.currency,
+          currency: "EUR",
         })
         .select()
         .single();
@@ -196,7 +186,7 @@ const NewTontine = () => {
           </Card>
         </motion.div>
 
-        {/* Currency & Amount */}
+        {/* Amount & Frequency */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -204,32 +194,14 @@ const NewTontine = () => {
         >
           <Card className="p-5 border-border shadow-soft space-y-4">
             <div>
-              <Label htmlFor="currency" className="text-foreground font-medium mb-2 flex items-center gap-2">
+              <Label htmlFor="amount" className="text-foreground font-medium mb-2 flex items-center gap-2">
                 <Coins className="w-4 h-4 text-secondary" />
-                Devise *
-              </Label>
-              <Select value={formData.currency} onValueChange={(v) => handleChange("currency", v)}>
-                <SelectTrigger className="h-12 rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CURRENCIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.symbol} - {c.name} ({c.code})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="amount" className="text-foreground font-medium mb-2 block">
-                Montant par tour ({formData.currency}) *
+                Montant par tour (€) *
               </Label>
               <Input
                 id="amount"
                 type="number"
-                placeholder="Ex: 15000"
+                placeholder="Ex: 100"
                 value={formData.amount}
                 onChange={(e) => handleChange("amount", e.target.value)}
                 className="h-12 rounded-xl"
